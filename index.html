@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Competition Grading System</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#475569',
+                        background: '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc;
+        }
+        .accordion-content {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .accordion-content.expanded {
+            max-height: 500px; /* Large enough to fit the table */
+            opacity: 1;
+        }
+        .chevron {
+            transition: transform 0.3s ease-in-out;
+        }
+        .chevron.rotated {
+            transform: rotate(180deg);
+        }
+        /* Styling the scrollbar for webkit (Chrome/Safari) if tables scroll horizontally */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 leading-tight">Grading System</h1>
+                <p class="text-xs text-slate-500 mt-1">Competition Stations Overview</p>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-full">
+                <i class="fa-solid fa-clipboard-list text-primary text-xl"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full max-w-3xl mx-auto px-4 py-6 pb-20">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-slate-600 uppercase tracking-wider">All Stations (15)</h2>
+            <button id="expand-all-btn" class="text-sm text-primary font-medium focus:outline-none px-2 py-1 bg-blue-50 rounded-md active:bg-blue-100 transition-colors">
+                Expand All
+            </button>
+        </div>
+        
+        <div id="stations-container" class="space-y-3">
+            <!-- Accordion items will be injected here by JavaScript -->
+        </div>
+    </main>
+
+    <script>
+        // Define the 15 stations and their grading criteria
+        // You can easily modify these later to match your exact rubrics
+        const stationNames = [
+            "Registration & Briefing",
+            "Physical Endurance",
+            "Technical Skill Assessment",
+            "Problem Solving Task",
+            "Team Communication",
+            "First Aid Scenario",
+            "Navigation & Orienteering",
+            "Equipment Handling",
+            "Strategic Planning",
+            "Time Management",
+            "Emergency Response",
+            "Analytical Thinking",
+            "Resource Allocation",
+            "Leadership Challenge",
+            "Final Debriefing"
+        ];
+
+        const stationsData = Array.from({ length: 15 }, (_, i) => {
+            return {
+                id: i + 1,
+                name: stationNames[i] || `Station ${i + 1}`,
+                criteria: [
+                    { name: "Task Completion", maxPoints: 10 },
+                    { name: "Efficiency / Time", maxPoints: 5 },
+                    { name: "Safety Procedures", maxPoints: 5 },
+                    { name: "Overall Quality", maxPoints: 5 }
+                ]
+            };
+        });
+
+        const container = document.getElementById('stations-container');
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        let allExpanded = false;
+
+        function renderStations() {
+            stationsData.forEach(station => {
+                // Calculate total max points for the station
+                const totalMaxPoints = station.criteria.reduce((sum, item) => sum + item.maxPoints, 0);
+
+                const itemHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden accordion-item">
+                        <button class="w-full px-4 py-4 flex items-center justify-between bg-white hover:bg-slate-50 active:bg-slate-100 transition-colors focus:outline-none" onclick="toggleAccordion(${station.id})">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                    ${station.id}
+                                </div>
+                                <div class="text-left">
+                                    <h3 class="font-semibold text-slate-800 text-base leading-snug">${station.name}</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5">Max Points: ${totalMaxPoints}</p>
+                                </div>
+                            </div>
+                            <i id="chevron-${station.id}" class="fa-solid fa-chevron-down text-slate-400 chevron shrink-0 ml-2"></i>
+                        </button>
+                        
+                        <div id="content-${station.id}" class="accordion-content bg-slate-50 border-t border-slate-100">
+                            <div class="p-4">
+                                <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                    <table class="w-full text-left border-collapse min-w-[280px]">
+                                        <thead>
+                                            <tr class="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
+                                                <th class="py-2.5 px-3 font-semibold border-b border-slate-200 w-1/2">Criteria</th>
+                                                <th class="py-2.5 px-3 font-semibold border-b border-slate-200 text-center">Max Pts</th>
+                                                <th class="py-2.5 px-3 font-semibold border-b border-slate-200 text-center">Awarded</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-sm divide-y divide-slate-100">
+                                            ${station.criteria.map(c => `
+                                                <tr class="hover:bg-slate-50 transition-colors">
+                                                    <td class="py-3 px-3 text-slate-700 font-medium">${c.name}</td>
+                                                    <td class="py-3 px-3 text-slate-600 text-center">${c.maxPoints}</td>
+                                                    <td class="py-3 px-3 text-center">
+                                                        <div class="w-12 h-8 mx-auto border border-slate-300 rounded bg-slate-50 flex items-center justify-center text-slate-400 text-xs">
+                                                            -
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="bg-blue-50 text-slate-800 font-semibold text-sm">
+                                                <td class="py-3 px-3 text-right">Total</td>
+                                                <td class="py-3 px-3 text-center">${totalMaxPoints}</td>
+                                                <td class="py-3 px-3 text-center">-</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-2 text-center flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-circle-info"></i> For reference only. Official scores recorded by judges.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+
+        window.toggleAccordion = function(id) {
+            const content = document.getElementById(`content-${id}`);
+            const chevron = document.getElementById(`chevron-${id}`);
+            
+            // Toggle classes
+            content.classList.toggle('expanded');
+            chevron.classList.toggle('rotated');
+            
+            // Sync Expand All button state if manual toggling occurs
+            updateExpandAllButtonState();
+        };
+
+        expandAllBtn.addEventListener('click', () => {
+            allExpanded = !allExpanded;
+            expandAllBtn.textContent = allExpanded ? "Collapse All" : "Expand All";
+            
+            stationsData.forEach(station => {
+                const content = document.getElementById(`content-${station.id}`);
+                const chevron = document.getElementById(`chevron-${station.id}`);
+                
+                if (allExpanded) {
+                    content.classList.add('expanded');
+                    chevron.classList.add('rotated');
+                } else {
+                    content.classList.remove('expanded');
+                    chevron.classList.remove('rotated');
+                }
+            });
+        });
+        
+        function updateExpandAllButtonState() {
+            const expandedContents = document.querySelectorAll('.accordion-content.expanded');
+            if (expandedContents.length === stationsData.length) {
+                allExpanded = true;
+                expandAllBtn.textContent = "Collapse All";
+            } else if (expandedContents.length === 0) {
+                allExpanded = false;
+                expandAllBtn.textContent = "Expand All";
+            }
+        }
+
+        // Initialize rendering
+        renderStations();
+
+    </script>
+</body>
+</html>
